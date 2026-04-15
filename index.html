@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gedächtnisexperiment</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4efe4; --surface: #ece5d4; --border: #c9bfa6;
+  --text: #272018; --muted: #7d7260; --accent: #3b6b57;
+  --accent-light: #cfe3da; --radius: 16px;
+}
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center; padding: 24px;
+}
+.screen { display: none; width: 100%; max-width: 540px; animation: fadeUp 0.35s ease; }
+.screen.active { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* INTRO */
+.card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 40px 36px; width: 100%;
+}
+h1 {
+  font-family: 'Fraunces', serif; font-size: 1.85rem; font-weight: 300;
+  line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 20px;
+}
+h1 em { font-style: italic; color: var(--accent); }
+.card p { font-size: 0.82rem; line-height: 1.8; color: var(--muted); margin-bottom: 10px; }
+.card p:last-of-type { margin-bottom: 0; }
+
+.id-display {
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.id-display span { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+.id-display strong { font-size: 1.05rem; letter-spacing: 0.15em; color: var(--accent); }
+
+.btn {
+  font-family: 'DM Mono', monospace; font-size: 0.84rem; font-weight: 500;
+  padding: 13px 28px; border: none; border-radius: 50px; cursor: pointer;
+  transition: transform 0.12s, background 0.18s; letter-spacing: 0.04em; width: 100%;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2f5244; }
+
+/* PROGRESS */
+.progress-wrap { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.progress-track { width: 100%; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+.progress-label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; text-align: right; }
+
+/* TRIAL */
+.trial-wrapper { width: 100%; position: relative; }
+.ring-timer {
+  position: absolute; top: -14px; right: -14px;
+  width: 48px; height: 48px; opacity: 0; transition: opacity 0.2s; z-index: 10;
+}
+.ring-timer.visible { opacity: 1; }
+.ring-bg { fill: none; stroke: var(--border); stroke-width: 3.5; }
+.ring-fg {
+  fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round;
+  transform: rotate(-90deg); transform-origin: 24px 24px;
+}
+
+.trial-box {
+  width: 100%; height: 160px; background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+}
+.choices-spacer {
+  width: 100%;
+  min-height: 156px; /* 2 rows of choice-btn at ~68px each + 10px gap */
+  display: flex; align-items: flex-start;
+}
+.trial-seq {
+  font-family: 'Fraunces', serif; font-size: 2.4rem; font-weight: 300;
+  letter-spacing: 0.2em; color: var(--text); user-select: none; transition: opacity 0.25s;
+}
+.trial-seq.hidden { opacity: 0; }
+
+.phase-label {
+  font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em;
+  text-transform: uppercase; text-align: center; min-height: 1.2em;
+}
+
+/* CHOICES */
+.choices { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; visibility: hidden; }
+.choices.visible { visibility: visible; }
+.choice-btn {
+  font-family: 'Fraunces', serif; font-size: 1.35rem; font-weight: 300;
+  letter-spacing: 0.1em; padding: 18px 8px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: center; color: var(--text); user-select: none;
+  line-height: 1.4; word-break: break-all;
+}
+.choice-btn:hover:not(:disabled) { background: var(--accent-light); border-color: var(--accent); }
+.choice-btn:active:not(:disabled) { transform: scale(0.97); }
+.choice-btn.selected { background: var(--accent-light); border-color: var(--accent); }
+
+/* END */
+.end-card { text-align: center; }
+.end-card h2 { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 300; margin-bottom: 10px; }
+.end-card h2 em { font-style: italic; color: var(--accent); }
+.end-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.7; }
+.score-badge {
+  background: var(--accent-light); border: 1.5px solid var(--accent);
+  border-radius: 14px; padding: 14px 24px;
+  font-size: 0.8rem; color: var(--accent); letter-spacing: 0.04em;
+  text-align: center; line-height: 2;
+}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div class="screen active" id="screen-intro">
+  <div class="card">
+    <h1>Kurzzeitgedächtnis<em>test</em></h1>
+    <p>Du siehst kurz eine Zeichenkette — merke sie dir so gut du kannst. Danach wählst du sie aus vier Möglichkeiten wieder aus.</p>
+    <p>Die Aufgaben werden im Verlauf schwieriger. Das Experiment dauert etwa 2–3 Minuten. Bitte führe es in einer ruhigen Umgebung durch.</p>
+  </div>
+  <div class="id-display">
+    <span>Deine anonyme ID</span>
+    <strong id="anon-id">——————</strong>
+  </div>
+  <button class="btn btn-primary" onclick="startExperiment()">Experiment starten</button>
+</div>
+
+<!-- TRIAL -->
+<div class="screen" id="screen-trial">
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-label" id="progress-label"></div>
+  </div>
+  <div class="trial-wrapper">
+    <svg class="ring-timer" id="ring-timer" viewBox="0 0 48 48">
+      <circle class="ring-bg" cx="24" cy="24" r="19"/>
+      <circle class="ring-fg" id="ring-fg" cx="24" cy="24" r="19"
+              stroke-dasharray="119.4" stroke-dashoffset="0"/>
+    </svg>
+    <div class="trial-box">
+      <div class="trial-seq" id="trial-seq"></div>
+    </div>
+  </div>
+  <div class="phase-label" id="phase-label"></div>
+  <div class="choices-spacer">
+    <div class="choices" id="choices"></div>
+  </div>
+</div>
+
+<!-- END -->
+<div class="screen" id="screen-end">
+  <div class="card end-card">
+    <h2>Vielen <em>Dank!</em></h2>
+    <p>Du hast das Experiment abgeschlossen. Bitte speichere die Ergebnisdatei und gib sie weiter.</p>
+  </div>
+  <div class="score-badge" id="score-badge"></div>
+  <button class="btn btn-primary" onclick="downloadResults()">Ergebnisse speichern (.csv)</button>
+</div>
+
+<script>
+// ── CHARACTER POOLS ──
+const NUM = ['0','1','2','3','4','5','6','7','8','9'];
+const GEO = ['ა','ბ','გ','დ','ე','ვ','ზ','თ','ი','კ','ლ','მ','ნ','ო','პ','ჟ','რ','ს','ტ','უ','ფ','ქ','ღ','ყ','შ','ჩ','ც','ძ','წ','ჭ','ხ','ჯ'];
+
+// Visually similar pairs for hardest level
+const NUM_SIMILAR = {
+  '0':['8','6'], '1':['7','4'], '2':['7','Z'], '3':['8','9'],
+  '4':['1','7'], '5':['6','9'], '6':['0','9'], '7':['1','4'],
+  '8':['3','0'], '9':['6','3']
+};
+// Georgian visually similar pairs (based on shape resemblance)
+const GEO_SIMILAR = {
+  'ა':['ო','ფ'], 'ბ':['პ','ზ'], 'გ':['ლ','ე'], 'დ':['ბ','პ'],
+  'ე':['გ','ვ'], 'ვ':['ე','ი'], 'ზ':['ბ','ს'], 'თ':['ტ','ც'],
+  'ი':['ვ','ნ'], 'კ':['ხ','ქ'], 'ლ':['გ','ნ'], 'მ':['შ','ნ'],
+  'ნ':['მ','ი'], 'ო':['ა','ც'], 'პ':['ბ','დ'], 'ჟ':['რ','ზ'],
+  'რ':['ჟ','ვ'], 'ს':['ზ','ც'], 'ტ':['თ','ც'], 'უ':['ყ','ო'],
+  'ფ':['ა','ო'], 'ქ':['კ','ხ'], 'ღ':['ყ','გ'], 'ყ':['უ','ღ'],
+  'შ':['მ','ნ'], 'ჩ':['ც','თ'], 'ც':['ო','ჩ'], 'ძ':['წ','ჭ'],
+  'წ':['ძ','ჭ'], 'ჭ':['ძ','წ'], 'ხ':['კ','ქ'], 'ჯ':['ი','ვ']
+};
+
+// ── TIMING ──
+const T_SHOW  = 5000;
+const T_BLANK = 3000;
+const CIRC    = 2 * Math.PI * 19; // 119.4
+
+// ── TRIAL PLAN ──
+// difficulty 1-5:
+//   1 = len4, fully random distractors
+//   2 = len5, fully random distractors
+//   3 = len5, first 2 chars shared with correct
+//   4 = len6, first 3 chars shared, 1-2 chars differ
+//   5 = len6, only 1 char differs, replaced by visually similar char
+//
+// Format: { type:'num'|'geo', diff:1-5 }
+const TRIAL_PLAN = [
+  {type:'num',diff:1},{type:'geo',diff:1},
+  {type:'num',diff:2},{type:'geo',diff:2},
+  {type:'num',diff:3},{type:'geo',diff:3},
+  {type:'num',diff:3},{type:'geo',diff:3},
+  {type:'num',diff:4},{type:'geo',diff:4},
+  {type:'num',diff:4},{type:'geo',diff:4},
+  {type:'num',diff:5},{type:'geo',diff:5},
+  {type:'num',diff:5},{type:'geo',diff:5},
+  {type:'num',diff:5},{type:'geo',diff:5},
+  {type:'num',diff:5},{type:'geo',diff:5},
+];
+
+let anonId = '';
+let trials = [];
+let results = [];
+let currentIdx = 0;
+let trialStart = 0;
+let ringRAF = null;
+
+// ── GENERATE ANON ID ──
+function makeId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = '';
+  for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+// ── HELPERS ──
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function randomSeq(pool, len) {
+  let seq = '', last = '', attempts = 0;
+  while (seq.length < len && attempts < 1000) {
+    const c = pool[Math.floor(Math.random()*pool.length)];
+    if (c !== last) { seq += c; last = c; }
+    attempts++;
+  }
+  return seq;
+}
+
+function getSimilar(char, type) {
+  const map = type === 'num' ? NUM_SIMILAR : GEO_SIMILAR;
+  return (map[char] || [])[Math.floor(Math.random() * (map[char]||[1]).length)] || char;
+}
+
+// Build a distractor sequence based on difficulty level
+function buildDistractor(correct, pool, len, diff, type) {
+  const arr = correct.split('');
+
+  if (diff <= 2) {
+    // Fully random, just not equal to correct
+    let attempt, tries = 0;
+    do { attempt = randomSeq(pool, len); tries++; } while (attempt === correct && tries < 50);
+    return attempt;
+  }
+
+  if (diff === 3) {
+    // Share first 2 chars, rest random
+    const shared = Math.min(2, len - 1);
+    const base = arr.slice(0, shared);
+    while (base.length < len) {
+      const c = pool[Math.floor(Math.random()*pool.length)];
+      if (c !== base[base.length-1]) base.push(c);
+    }
+    const result = base.join('');
+    return result === correct ? buildDistractor(correct, pool, len, diff, type) : result;
+  }
+
+  if (diff === 4) {
+    // Share first half, change 1-2 chars in second half
+    const d = arr.slice();
+    const changeable = [];
+    for (let i = Math.floor(len/2); i < len; i++) changeable.push(i);
+    const toChange = shuffle(changeable).slice(0, 2);
+    toChange.forEach(i => {
+      let replacement, tries = 0;
+      do {
+        replacement = pool[Math.floor(Math.random()*pool.length)];
+        tries++;
+      } while (replacement === d[i] && tries < 20);
+      d[i] = replacement;
+    });
+    const result = d.join('');
+    return result === correct ? buildDistractor(correct, pool, len, diff, type) : result;
+  }
+
+  // diff === 5: change exactly 1 char to visually similar
+  const d = arr.slice();
+  const positions = shuffle([...Array(len).keys()]);
+  let changed = false;
+  for (const i of positions) {
+    const sim = getSimilar(d[i], type);
+    if (sim && sim !== d[i]) {
+      d[i] = sim;
+      changed = true;
+      break;
+    }
+  }
+  if (!changed) {
+    // fallback: change one char to random different
+    const i = Math.floor(Math.random()*len);
+    let replacement, tries = 0;
+    do {
+      replacement = pool[Math.floor(Math.random()*pool.length)];
+      tries++;
+    } while (replacement === arr[i] && tries < 20);
+    d[i] = replacement;
+  }
+  const result = d.join('');
+  return result === correct ? buildDistractor(correct, pool, len, diff, type) : result;
+}
+
+function buildOptions(correct, pool, len, diff, type) {
+  const set = new Set([correct]);
+  let attempts = 0;
+  while (set.size < 4 && attempts < 200) {
+    set.add(buildDistractor(correct, pool, len, diff, type));
+    attempts++;
+  }
+  // fallback padding
+  while (set.size < 4) set.add(randomSeq(pool, len));
+  return shuffle([...set]);
+}
+
+// ── LEN FROM DIFF ──
+function lenForDiff(diff) {
+  if (diff <= 2) return 4 + (diff - 1); // 4, 5
+  if (diff === 3) return 5;
+  return 6; // 4, 5
+}
+
+// ── GENERATE TRIALS ──
+function generateTrials() {
+  trials = TRIAL_PLAN.map((plan, i) => {
+    const pool = plan.type === 'num' ? NUM : GEO;
+    const len  = lenForDiff(plan.diff);
+    const correct = randomSeq(pool, len);
+    const options = buildOptions(correct, pool, len, plan.diff, plan.type);
+    return { id: i+1, type: plan.type, len, diff: plan.diff, correct, options };
+  });
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  requestAnimationFrame(() => document.getElementById(id).classList.add('active'));
+}
+
+function updateProgress() {
+  const pct = (currentIdx / trials.length) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = currentIdx + ' / ' + trials.length;
+}
+
+// ── RING ──
+function startRing(durationMs) {
+  const ring = document.getElementById('ring-timer');
+  const fg   = document.getElementById('ring-fg');
+  ring.classList.add('visible');
+  fg.style.strokeDashoffset = '0';
+  const t0 = performance.now();
+  cancelAnimationFrame(ringRAF);
+  function tick(now) {
+    const p = Math.min((now - t0) / durationMs, 1);
+    fg.style.strokeDashoffset = (p * CIRC).toFixed(2);
+    if (p < 1) ringRAF = requestAnimationFrame(tick);
+  }
+  ringRAF = requestAnimationFrame(tick);
+}
+
+function stopRing() {
+  cancelAnimationFrame(ringRAF);
+  document.getElementById('ring-timer').classList.remove('visible');
+}
+
+// ── RUN TRIAL ──
+function runTrial() {
+  if (currentIdx >= trials.length) { endExperiment(); return; }
+  const trial = trials[currentIdx];
+  const seqEl = document.getElementById('trial-seq');
+  const phaseEl = document.getElementById('phase-label');
+  const choicesEl = document.getElementById('choices');
+
+  seqEl.classList.remove('hidden');
+  choicesEl.classList.remove('visible');
+  choicesEl.innerHTML = '';
+  stopRing();
+  updateProgress();
+
+  // Phase 1 — SHOW (5s, green ring)
+  phaseEl.textContent = 'Einprägen …';
+  seqEl.textContent = trial.correct;
+  startRing(T_SHOW);
+
+  setTimeout(() => {
+    // Phase 2 — BLANK (3s, ring counts down)
+    seqEl.classList.add('hidden');
+    phaseEl.textContent = 'Gleich geht\'s weiter …';
+    startRing(T_BLANK);
+
+    setTimeout(() => {
+      // Phase 3 — CHOOSE
+      stopRing();
+      seqEl.textContent = '';
+      phaseEl.textContent = 'Welche Zeichenkette hast du gesehen?';
+      trialStart = performance.now();
+
+      trial.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.textContent = opt;
+        btn.addEventListener('click', () => handleAnswer(opt, btn));
+        choicesEl.appendChild(btn);
+      });
+      choicesEl.classList.add('visible');
+    }, T_BLANK);
+  }, T_SHOW);
+}
+
+function handleAnswer(chosen, btnEl) {
+  const trial = trials[currentIdx];
+  const rt = Math.round(performance.now() - trialStart);
+  const isRight = chosen === trial.correct;
+
+  document.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+  });
+  btnEl.classList.add('selected');
+
+  results.push({
+    trial_nr: trial.id,
+    participant_id: anonId,
+    type: trial.type === 'num' ? 'Zahlen' : 'Georgisch',
+    difficulty: trial.diff,
+    length: trial.len,
+    correct_seq: trial.correct,
+    chosen_seq: chosen,
+    correct: isRight ? 1 : 0,
+    reaction_time_ms: rt,
+    timestamp: new Date().toISOString()
+  });
+
+  currentIdx++;
+  setTimeout(runTrial, 1000);
+}
+
+// ── END ──
+function endExperiment() {
+  updateProgress();
+  const total  = results.length;
+  const nRight = results.filter(r => r.correct).length;
+  const numRes = results.filter(r => r.type === 'Zahlen');
+  const geoRes = results.filter(r => r.type === 'Georgisch');
+  const numPct = numRes.length ? Math.round(numRes.filter(r=>r.correct).length/numRes.length*100) : 0;
+  const geoPct = geoRes.length ? Math.round(geoRes.filter(r=>r.correct).length/geoRes.length*100) : 0;
+  const avgRT  = Math.round(results.reduce((s,r)=>s+r.reaction_time_ms,0)/total);
+
+  // By difficulty
+  let diffLines = '';
+  for (let d = 1; d <= 5; d++) {
+    const dr = results.filter(r => r.difficulty === d);
+    if (dr.length) {
+      const pct = Math.round(dr.filter(r=>r.correct).length/dr.length*100);
+      diffLines += `Level ${d}: ${pct}% &nbsp;`;
+    }
+  }
+
+  document.getElementById('score-badge').innerHTML =
+    `<strong>${nRight} / ${total}</strong> richtig &nbsp;·&nbsp; ID: ${anonId}<br>` +
+    `Zahlen ${numPct}% &nbsp;·&nbsp; Georgisch ${geoPct}% &nbsp;·&nbsp; Ø RT ${avgRT} ms<br>` +
+    diffLines;
+
+  showScreen('screen-end');
+}
+
+// ── CSV ──
+function downloadResults() {
+  const headers = ['trial_nr','participant_id','type','difficulty','length','correct_seq','chosen_seq','correct','reaction_time_ms','timestamp'];
+  const rows = results.map(r => headers.map(h => '"'+String(r[h]).replace(/"/g,'""')+'"').join(','));
+  const csv = [headers.join(','), ...rows].join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'experiment_'+anonId+'_'+Date.now()+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── START ──
+function startExperiment() {
+  generateTrials();
+  currentIdx = 0;
+  results = [];
+  showScreen('screen-trial');
+  setTimeout(runTrial, 300);
+}
+
+// Init ID on load
+anonId = makeId();
+document.getElementById('anon-id').textContent = anonId;
+</script>
+</body>
+</html>

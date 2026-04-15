@@ -172,7 +172,30 @@ h1 em { font-style: italic; color: var(--accent); }
   <button class="btn btn-primary" onclick="downloadResults()">Ergebnisse speichern (.csv)</button>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBZkv2DoGbp1kk0sxdg9T3o9Z22b0cIPg0",
+  authDomain: "tpr-game.firebaseapp.com",
+  projectId: "tpr-game",
+  storageBucket: "tpr-game.firebasestorage.app",
+  messagingSenderId: "213328104326",
+  appId: "1:213328104326:web:bf6defc7e291d5fe267a07"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+async function logTrial(record) {
+  try {
+    await addDoc(collection(db, 'trials'), record);
+  } catch (e) {
+    console.warn('Firebase write failed:', e);
+  }
+}
+
 // ── CHARACTER POOLS ──
 const NUM = ['0','1','2','3','4','5','6','7','8','9'];
 const GEO = ['ა','ბ','გ','დ','ე','ვ','ზ','თ','ი','კ','ლ','მ','ნ','ო','პ','ჟ','რ','ს','ტ','უ','ფ','ქ','ღ','ყ','შ','ჩ','ც','ძ','წ','ჭ','ხ','ჯ'];
@@ -446,18 +469,22 @@ function handleAnswer(chosen, btnEl) {
   });
   btnEl.classList.add('selected');
 
-  results.push({
+  const record = {
     trial_nr: trial.id,
     participant_id: anonId,
     type: trial.type === 'num' ? 'Zahlen' : 'Georgisch',
     difficulty: trial.diff,
     length: trial.len,
     correct_seq: trial.correct,
+    options_seen: trial.options,
     chosen_seq: chosen,
     correct: isRight ? 1 : 0,
     reaction_time_ms: rt,
     timestamp: new Date().toISOString()
-  });
+  };
+
+  results.push(record);
+  logTrial(record);
 
   currentIdx++;
   setTimeout(runTrial, 1000);
@@ -515,8 +542,16 @@ function startExperiment() {
   setTimeout(runTrial, 300);
 }
 
-// Init ID on load
-anonId = makeId();
+// Expose to HTML onclick handlers (module scripts don't auto-expose globals)
+window.startExperiment  = startExperiment;
+window.downloadResults  = downloadResults;
+
+// Init ID on load — persist across sessions
+anonId = localStorage.getItem('experiment_anon_id');
+if (!anonId) {
+  anonId = makeId();
+  localStorage.setItem('experiment_anon_id', anonId);
+}
 document.getElementById('anon-id').textContent = anonId;
 </script>
 </body>

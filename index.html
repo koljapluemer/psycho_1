@@ -55,17 +55,6 @@ h1 em { font-style: italic; color: var(--accent); }
 
 /* TRIAL */
 .trial-wrapper { width: 100%; position: relative; }
-.ring-timer {
-  position: absolute; top: -14px; right: -14px;
-  width: 48px; height: 48px; opacity: 0; transition: opacity 0.2s; z-index: 10;
-}
-.ring-timer.visible { opacity: 1; }
-.ring-bg { fill: none; stroke: var(--border); stroke-width: 3.5; }
-.ring-fg {
-  fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round;
-  transform: rotate(-90deg); transform-origin: 24px 24px;
-}
-
 .trial-box {
   width: 100%; height: 160px; background: var(--surface);
   border: 1.5px solid var(--border); border-radius: var(--radius);
@@ -129,11 +118,6 @@ h1 em { font-style: italic; color: var(--accent); }
     <div class="progress-label" id="progress-label"></div>
   </div>
   <div class="trial-wrapper">
-    <svg class="ring-timer" id="ring-timer" viewBox="0 0 48 48">
-      <circle class="ring-bg" cx="24" cy="24" r="19"/>
-      <circle class="ring-fg" id="ring-fg" cx="24" cy="24" r="19"
-              stroke-dasharray="119.4" stroke-dashoffset="0"/>
-    </svg>
     <div class="trial-box">
       <div class="trial-seq" id="trial-seq"></div>
     </div>
@@ -202,7 +186,6 @@ const GEO_SIMILAR = {
 // ── TIMING ──
 const T_SHOW  = 5000;
 const T_BLANK = 3000;
-const CIRC    = 2 * Math.PI * 19; // 119.4
 
 // ── TRIAL PLAN ──
 // difficulty 1-5:
@@ -233,7 +216,6 @@ let trials = [];
 let results = [];
 let currentIdx = 0;
 let trialStart = 0;
-let ringRAF = null;
 
 // ── GENERATE ANON ID ──
 function makeId() {
@@ -370,27 +352,6 @@ function updateProgress() {
   document.getElementById('progress-label').textContent = currentIdx + ' / ' + trials.length;
 }
 
-// ── RING ──
-function startRing(durationMs) {
-  const ring = document.getElementById('ring-timer');
-  const fg   = document.getElementById('ring-fg');
-  ring.classList.add('visible');
-  fg.style.strokeDashoffset = '0';
-  const t0 = performance.now();
-  cancelAnimationFrame(ringRAF);
-  function tick(now) {
-    const p = Math.min((now - t0) / durationMs, 1);
-    fg.style.strokeDashoffset = (p * CIRC).toFixed(2);
-    if (p < 1) ringRAF = requestAnimationFrame(tick);
-  }
-  ringRAF = requestAnimationFrame(tick);
-}
-
-function stopRing() {
-  cancelAnimationFrame(ringRAF);
-  document.getElementById('ring-timer').classList.remove('visible');
-}
-
 // ── RUN TRIAL ──
 function runTrial() {
   if (currentIdx >= trials.length) { endExperiment(); return; }
@@ -402,23 +363,19 @@ function runTrial() {
   seqEl.classList.remove('hidden');
   choicesEl.classList.remove('visible');
   choicesEl.innerHTML = '';
-  stopRing();
   updateProgress();
 
-  // Phase 1 — SHOW (5s, green ring)
+  // Phase 1 — SHOW
   phaseEl.textContent = 'Einprägen …';
   seqEl.textContent = trial.correct;
-  startRing(T_SHOW);
 
   setTimeout(() => {
-    // Phase 2 — BLANK (3s, ring counts down)
+    // Phase 2 — BLANK
     seqEl.classList.add('hidden');
     phaseEl.textContent = 'Gleich geht\'s weiter …';
-    startRing(T_BLANK);
 
     setTimeout(() => {
       // Phase 3 — CHOOSE
-      stopRing();
       seqEl.textContent = '';
       phaseEl.textContent = 'Welche Zeichenkette hast du gesehen?';
       trialStart = performance.now();

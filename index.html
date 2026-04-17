@@ -73,7 +73,7 @@ h1 em { font-style: italic; color: var(--accent); }
 }
 .choices-spacer {
   width: 100%;
-  min-height: 156px; /* 2 rows of choice-btn at ~68px each + 10px gap */
+  min-height: 312px; /* 4 rows of choice-btn at ~68px each + 3 gaps */
   display: flex; align-items: flex-start;
 }
 .trial-seq {
@@ -116,7 +116,7 @@ h1 em { font-style: italic; color: var(--accent); }
 <div class="screen active" id="screen-intro">
   <div class="card">
     <h1>Kurzzeitgedächtnis<em>test</em></h1>
-    <p>Du siehst kurz eine Zeichenkette — merke sie dir so gut du kannst. Danach wählst du sie aus vier Möglichkeiten wieder aus.</p>
+    <p>Du siehst kurz eine Zeichenkette — merke sie dir so gut du kannst. Danach wählst du sie aus acht Möglichkeiten wieder aus.</p>
     <p>Die Aufgaben werden im Verlauf schwieriger. Das Experiment dauert etwa 2–3 Minuten. Bitte führe es in einer ruhigen Umgebung durch.</p>
   </div>
   <button class="btn btn-primary" onclick="startExperiment()">Experiment starten</button>
@@ -206,24 +206,26 @@ const CIRC    = 2 * Math.PI * 19; // 119.4
 
 // ── TRIAL PLAN ──
 // difficulty 1-5:
-//   1 = len4, fully random distractors
-//   2 = len5, fully random distractors
-//   3 = len5, first 2 chars shared with correct
-//   4 = len6, first 3 chars shared, 1-2 chars differ
-//   5 = len6, only 1 char differs, replaced by visually similar char
+//   1 = fully random distractors
+//   2 = fully random distractors
+//   3 = first 2 chars shared with correct
+//   4 = first half shared, 1-2 chars differ
+//   5 = only 1 char differs, replaced by visually similar char
 //
-// Format: { type:'num'|'geo', diff:1-5 }
+// First pair is length 3. All following trials keep the existing
+// difficulty progression, but use length 6.
+// Format: { type:'num'|'geo', diff:1-5, len:3|6 }
 const TRIAL_PLAN = [
-  {type:'num',diff:1},{type:'geo',diff:1},
-  {type:'num',diff:2},{type:'geo',diff:2},
-  {type:'num',diff:3},{type:'geo',diff:3},
-  {type:'num',diff:3},{type:'geo',diff:3},
-  {type:'num',diff:4},{type:'geo',diff:4},
-  {type:'num',diff:4},{type:'geo',diff:4},
-  {type:'num',diff:5},{type:'geo',diff:5},
-  {type:'num',diff:5},{type:'geo',diff:5},
-  {type:'num',diff:5},{type:'geo',diff:5},
-  {type:'num',diff:5},{type:'geo',diff:5},
+  {type:'num',diff:1,len:3},{type:'geo',diff:1,len:3},
+  {type:'num',diff:2,len:6},{type:'geo',diff:2,len:6},
+  {type:'num',diff:3,len:6},{type:'geo',diff:3,len:6},
+  {type:'num',diff:3,len:6},{type:'geo',diff:3,len:6},
+  {type:'num',diff:4,len:6},{type:'geo',diff:4,len:6},
+  {type:'num',diff:4,len:6},{type:'geo',diff:4,len:6},
+  {type:'num',diff:5,len:6},{type:'geo',diff:5,len:6},
+  {type:'num',diff:5,len:6},{type:'geo',diff:5,len:6},
+  {type:'num',diff:5,len:6},{type:'geo',diff:5,len:6},
+  {type:'num',diff:5,len:6},{type:'geo',diff:5,len:6},
 ];
 
 let anonId = '';
@@ -336,27 +338,20 @@ function buildDistractor(correct, pool, len, diff, type) {
 function buildOptions(correct, pool, len, diff, type) {
   const set = new Set([correct]);
   let attempts = 0;
-  while (set.size < 4 && attempts < 200) {
+  while (set.size < 8 && attempts < 400) {
     set.add(buildDistractor(correct, pool, len, diff, type));
     attempts++;
   }
   // fallback padding
-  while (set.size < 4) set.add(randomSeq(pool, len));
+  while (set.size < 8) set.add(randomSeq(pool, len));
   return shuffle([...set]);
-}
-
-// ── LEN FROM DIFF ──
-function lenForDiff(diff) {
-  if (diff <= 2) return 4 + (diff - 1); // 4, 5
-  if (diff === 3) return 5;
-  return 6; // 4, 5
 }
 
 // ── GENERATE TRIALS ──
 function generateTrials() {
   trials = TRIAL_PLAN.map((plan, i) => {
     const pool = plan.type === 'num' ? NUM : GEO;
-    const len  = lenForDiff(plan.diff);
+    const len  = plan.len;
     const correct = randomSeq(pool, len);
     const options = buildOptions(correct, pool, len, plan.diff, plan.type);
     return { id: i+1, type: plan.type, len, diff: plan.diff, correct, options };

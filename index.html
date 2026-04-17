@@ -38,14 +38,6 @@ h1 em { font-style: italic; color: var(--accent); }
 .card p { font-size: 0.82rem; line-height: 1.8; color: var(--muted); margin-bottom: 10px; }
 .card p:last-of-type { margin-bottom: 0; }
 
-.id-display {
-  width: 100%; background: var(--bg); border: 1.5px solid var(--border);
-  border-radius: 10px; padding: 14px 16px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-}
-.id-display span { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
-.id-display strong { font-size: 1.05rem; letter-spacing: 0.15em; color: var(--accent); }
-
 .btn {
   font-family: 'DM Mono', monospace; font-size: 0.84rem; font-weight: 500;
   padding: 13px 28px; border: none; border-radius: 50px; cursor: pointer;
@@ -116,12 +108,6 @@ h1 em { font-style: italic; color: var(--accent); }
 .end-card h2 { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 300; margin-bottom: 10px; }
 .end-card h2 em { font-style: italic; color: var(--accent); }
 .end-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.7; }
-.score-badge {
-  background: var(--accent-light); border: 1.5px solid var(--accent);
-  border-radius: 14px; padding: 14px 24px;
-  font-size: 0.8rem; color: var(--accent); letter-spacing: 0.04em;
-  text-align: center; line-height: 2;
-}
 </style>
 </head>
 <body>
@@ -132,10 +118,6 @@ h1 em { font-style: italic; color: var(--accent); }
     <h1>Kurzzeitgedächtnis<em>test</em></h1>
     <p>Du siehst kurz eine Zeichenkette — merke sie dir so gut du kannst. Danach wählst du sie aus vier Möglichkeiten wieder aus.</p>
     <p>Die Aufgaben werden im Verlauf schwieriger. Das Experiment dauert etwa 2–3 Minuten. Bitte führe es in einer ruhigen Umgebung durch.</p>
-  </div>
-  <div class="id-display">
-    <span>Deine anonyme ID</span>
-    <strong id="anon-id">——————</strong>
   </div>
   <button class="btn btn-primary" onclick="startExperiment()">Experiment starten</button>
 </div>
@@ -168,7 +150,6 @@ h1 em { font-style: italic; color: var(--accent); }
     <h2>Vielen <em>Dank!</em></h2>
     <p>Du hast das Experiment abgeschlossen. Bitte speichere die Ergebnisdatei und gib sie weiter.</p>
   </div>
-  <div class="score-badge" id="score-badge"></div>
   <button class="btn btn-primary" onclick="downloadResults()">Ergebnisse speichern (.csv)</button>
 </div>
 
@@ -493,29 +474,6 @@ function handleAnswer(chosen, btnEl) {
 // ── END ──
 function endExperiment() {
   updateProgress();
-  const total  = results.length;
-  const nRight = results.filter(r => r.correct).length;
-  const numRes = results.filter(r => r.type === 'Zahlen');
-  const geoRes = results.filter(r => r.type === 'Georgisch');
-  const numPct = numRes.length ? Math.round(numRes.filter(r=>r.correct).length/numRes.length*100) : 0;
-  const geoPct = geoRes.length ? Math.round(geoRes.filter(r=>r.correct).length/geoRes.length*100) : 0;
-  const avgRT  = Math.round(results.reduce((s,r)=>s+r.reaction_time_ms,0)/total);
-
-  // By difficulty
-  let diffLines = '';
-  for (let d = 1; d <= 5; d++) {
-    const dr = results.filter(r => r.difficulty === d);
-    if (dr.length) {
-      const pct = Math.round(dr.filter(r=>r.correct).length/dr.length*100);
-      diffLines += `Level ${d}: ${pct}% &nbsp;`;
-    }
-  }
-
-  document.getElementById('score-badge').innerHTML =
-    `<strong>${nRight} / ${total}</strong> richtig &nbsp;·&nbsp; ID: ${anonId}<br>` +
-    `Zahlen ${numPct}% &nbsp;·&nbsp; Georgisch ${geoPct}% &nbsp;·&nbsp; Ø RT ${avgRT} ms<br>` +
-    diffLines;
-
   showScreen('screen-end');
 }
 
@@ -552,7 +510,6 @@ if (!anonId) {
   anonId = makeId();
   localStorage.setItem('experiment_anon_id', anonId);
 }
-document.getElementById('anon-id').textContent = anonId;
 </script>
 </body>
 </html>
